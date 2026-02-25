@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  # ─── Infrastructure ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB:       checkin
+      POSTGRES_USER:     checkin
+      POSTGRES_PASSWORD: checkin
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U checkin"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on: [zookeeper]
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  # ─── Check-in service ─────────────────────────────────────────────────────────
+  checkin:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    ports:
+      - "8006:8000"
+    environment:
+      PORT:           8000
+      DB_HOST:        postgres
+      DB_PORT:        5432
+      DB_NAME:        checkin
+      DB_USER:        checkin
+      DB_PASSWORD:    checkin
+      KAFKA_BROKERS:  kafka:29092
+      KAFKA_GROUP_ID: checkin-service
+      TOPIC_FLIGHTS:  flights.events
+      TOPIC_TICKETS:  tickets.events
+      TOPIC_CHECKIN:  checkin.events
+    restart: unless-stopped
+
+volumes:
+  pgdata:

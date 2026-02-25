@@ -1,0 +1,127 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Исходные файлы">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Файлы заголовков">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Файлы ресурсов">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Исходные файлы\db">
+      <UniqueIdentifier>{2f7f5ed5-5a33-4dfe-89d4-485d78d4f172}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\kafka">
+      <UniqueIdentifier>{a9a54d75-cac9-4b55-b6b1-0a7acd5b0d61}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\handlers">
+      <UniqueIdentifier>{ced722f0-9807-4f62-8ac1-62d0adab784e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\services">
+      <UniqueIdentifier>{d6a9ced0-dc82-43b1-aaa5-25451bc72e50}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Исходные файлы\utils">
+      <UniqueIdentifier>{496582e6-5220-4a14-abde-3929da1f8b88}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\db">
+      <UniqueIdentifier>{ad753d09-3c31-4f64-b958-551fd5c0c45d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\kafka">
+      <UniqueIdentifier>{4f9bdc54-5588-4f1f-999e-c4da0f011db9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\utils">
+      <UniqueIdentifier>{33664325-8717-407f-a9a5-b19dea32fb11}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\handlers">
+      <UniqueIdentifier>{68739b74-946e-4744-ac62-2f1f0ba264ec}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Файлы заголовков\services">
+      <UniqueIdentifier>{d32b2f62-2c40-4e3d-9589-7d2f6b6c637d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="build.sh" />
+    <None Include="docker-compose.yml" />
+    <None Include="Dockerfile" />
+    <None Include="README.md" />
+    <None Include="sql\schema.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="config.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="models.h">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="db\database.h">
+      <Filter>Файлы заголовков\db</Filter>
+    </ClInclude>
+    <ClInclude Include="kafka\consumer.h">
+      <Filter>Файлы заголовков\kafka</Filter>
+    </ClInclude>
+    <ClInclude Include="kafka\outbox.h">
+      <Filter>Файлы заголовков\kafka</Filter>
+    </ClInclude>
+    <ClInclude Include="kafka\producer.h">
+      <Filter>Файлы заголовков\kafka</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\time_utils.h">
+      <Filter>Файлы заголовков\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="utils\uuid.h">
+      <Filter>Файлы заголовков\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="handlers\handlers.h">
+      <Filter>Файлы заголовков\handlers</Filter>
+    </ClInclude>
+    <ClInclude Include="services\cache_service.h">
+      <Filter>Файлы заголовков\services</Filter>
+    </ClInclude>
+    <ClInclude Include="services\checkin_service.h">
+      <Filter>Файлы заголовков\services</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="db\database.cpp">
+      <Filter>Исходные файлы\db</Filter>
+    </ClCompile>
+    <ClCompile Include="kafka\outbox.cpp">
+      <Filter>Исходные файлы\kafka</Filter>
+    </ClCompile>
+    <ClCompile Include="kafka\producer.cpp">
+      <Filter>Исходные файлы\kafka</Filter>
+    </ClCompile>
+    <ClCompile Include="kafka\consumer.cpp">
+      <Filter>Исходные файлы\kafka</Filter>
+    </ClCompile>
+    <ClCompile Include="handlers\health_handler.cpp">
+      <Filter>Исходные файлы\handlers</Filter>
+    </ClCompile>
+    <ClCompile Include="handlers\checkin_handlers.cpp">
+      <Filter>Исходные файлы\handlers</Filter>
+    </ClCompile>
+    <ClCompile Include="services\checkin_service.cpp">
+      <Filter>Исходные файлы\services</Filter>
+    </ClCompile>
+    <ClCompile Include="services\cache_service.cpp">
+      <Filter>Исходные файлы\services</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\time_utils.cpp">
+      <Filter>Исходные файлы\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="utils\uuid.cpp">
+      <Filter>Исходные файлы\utils</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>
