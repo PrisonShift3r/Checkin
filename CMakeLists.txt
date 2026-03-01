@@ -24,41 +24,17 @@ FetchContent_Declare(spdlog
 )
 FetchContent_MakeAvailable(spdlog)
 
-# ─── Standalone Asio ──────────────────────────────────────────────────────────
-FetchContent_Declare(asio
-    GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
-    GIT_TAG        asio-1-30-2
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(asio)
+# ─── Crow + Asio через vcpkg ──────────────────────────────────────────────────
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/share/crow")
+list(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/share/asio")
 
-add_library(asio_headers INTERFACE)
-target_include_directories(asio_headers INTERFACE ${asio_SOURCE_DIR}/asio/include)
-target_compile_definitions(asio_headers INTERFACE ASIO_STANDALONE)
-
-# Crow ищет Asio через эту переменную
-set(ASIO_INCLUDE_DIR ${asio_SOURCE_DIR}/asio/include CACHE PATH "" FORCE)
-
-# ─── Crow ─────────────────────────────────────────────────────────────────────
-set(CROW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(CROW_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
-set(CROW_USE_BOOST      OFF CACHE BOOL "" FORCE)
-
-FetchContent_Declare(crow
-    GIT_REPOSITORY https://github.com/CrowCpp/Crow.git
-    GIT_TAG        v1.2.0
-    GIT_SHALLOW    TRUE
-)
-FetchContent_MakeAvailable(crow)
+find_package(Crow CONFIG REQUIRED)
+find_package(asio CONFIG REQUIRED)
 
 # ─── libpqxx ──────────────────────────────────────────────────────────────────
-# Windows: установить PostgreSQL https://www.postgresql.org/download/windows/
-# Затем передать путь: cmake -B build -DPostgreSQL_ROOT="C:/Program Files/PostgreSQL/16"
 find_package(PostgreSQL REQUIRED)
-
-set(SKIP_BUILD_TEST ON  CACHE BOOL "" FORCE)
+set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
 set(BUILD_TEST      OFF CACHE BOOL "" FORCE)
-
 FetchContent_Declare(libpqxx
     GIT_REPOSITORY https://github.com/jtv/libpqxx.git
     GIT_TAG        7.10.0
@@ -72,7 +48,6 @@ set(RDKAFKA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(WITH_SASL              OFF CACHE BOOL "" FORCE)
 set(WITH_SSL               ON  CACHE BOOL "" FORCE)
 set(WITH_ZLIB              ON  CACHE BOOL "" FORCE)
-
 FetchContent_Declare(librdkafka
     GIT_REPOSITORY https://github.com/confluentinc/librdkafka.git
     GIT_TAG        v2.4.0
@@ -98,23 +73,21 @@ set(SOURCES
 
 add_executable(checkin-service ${SOURCES})
 
-target_compile_definitions(checkin-service PRIVATE
-    ASIO_STANDALONE
-    CROW_USE_BOOST=0
-    CROW_ENABLE_SSL
-)
-
 target_include_directories(checkin-service PRIVATE
     ${CMAKE_SOURCE_DIR}/include
-    ${asio_SOURCE_DIR}/asio/include
-    ${crow_SOURCE_DIR}/include
 )
 
 target_link_libraries(checkin-service PRIVATE
     Threads::Threads
-    asio_headers
+    Crow::Crow
+    asio::asio
     pqxx
     rdkafka++
     nlohmann_json::nlohmann_json
     spdlog::spdlog
+)
+
+target_compile_definitions(checkin-service PRIVATE
+    ASIO_STANDALONE
+    CROW_USE_BOOST=0
 )
