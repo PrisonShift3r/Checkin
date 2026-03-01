@@ -1,5 +1,6 @@
 #include "config.h"
 #include "db/database.h"
+#include "db/migrator.h"
 #include "kafka/consumer.h"
 #include "kafka/producer.h"
 #include "kafka/outbox.h"
@@ -12,9 +13,11 @@
 #include <nlohmann/json.hpp>
 #include <csignal>
 #include <atomic>
+#include <thread>
+#include <chrono>
 
 // ─── Global shutdown flag ─────────────────────────────────────────────────────
-static std::atomic<bool> g_shutdown{false};
+static std::atomic<bool> g_shutdown{ false };
 
 void signalHandler(int) {
     spdlog::info("Shutdown signal received");
@@ -23,10 +26,10 @@ void signalHandler(int) {
 
 // ─── Kafka message router ─────────────────────────────────────────────────────
 void handleKafkaMessage(const std::string& topic,
-                         const std::string& /*key*/,
-                         const nlohmann::json& msg,
-                         checkin::CacheService& cache,
-                         checkin::CheckinService& service) {
+    const std::string& /*key*/,
+    const nlohmann::json& msg,
+    checkin::CacheService& cache,
+    checkin::CheckinService& service) {
     try {
         if (topic == "flights.events") {
             // Expected: { eventId, type, flightId, newStatus, simTime }
@@ -36,7 +39,7 @@ void handleKafkaMessage(const std::string& topic,
             std::string event_id = msg.value("eventId", "");
             std::string flight_id = msg.value("flightId", "");
             std::string new_status = msg.value("newStatus", "");
-            std::string sim_time  = msg.value("simTime", "");
+            std::string sim_time = msg.value("simTime", "");
 
             if (flight_id.empty()) return;
 
@@ -52,20 +55,21 @@ void handleKafkaMessage(const std::string& topic,
 
             if (status == checkin::FlightStatus::RegistrationOpen) {
                 spdlog::info("RegistrationOpen received for {}, running auto check-in",
-                             flight_id);
+                    flight_id);
                 // Run in the consumer thread (acceptable for moderate load)
                 service.runAutoCheckin(flight_id, sim_time);
             }
 
             if (!event_id.empty()) service.markEventProcessed(event_id);
 
-        } else if (topic == "tickets.events") {
+        }
+        else if (topic == "tickets.events") {
             // Expected: { eventId, type, ticketId, flightId, passengerId, status }
-            std::string event_type  = msg.value("type", "");
-            std::string event_id    = msg.value("eventId", "");
-            std::string ticket_id   = msg.value("ticketId", "");
-            std::string flight_id   = msg.value("flightId", "");
-            std::string passenger_id= msg.value("passengerId", "");
+            std::string event_type = msg.value("type", "");
+            std::string event_id = msg.value("eventId", "");
+            std::string ticket_id = msg.value("ticketId", "");
+            std::string flight_id = msg.value("flightId", "");
+            std::string passenger_id = msg.value("passengerId", "");
 
             if (ticket_id.empty()) return;
 
@@ -76,20 +80,23 @@ void handleKafkaMessage(const std::string& topic,
 
             if (event_type == "ticket.bought") {
                 cache.upsertTicket(ticket_id, flight_id, passenger_id,
-                                   checkin::TicketStatus::Active);
+                    checkin::TicketStatus::Active);
                 spdlog::info("TicketCache: bought {} for flight {}", ticket_id,
-                             flight_id);
-            } else if (event_type == "ticket.refunded") {
+                    flight_id);
+            }
+            else if (event_type == "ticket.refunded") {
                 cache.updateTicketStatus(ticket_id, checkin::TicketStatus::Refunded);
                 spdlog::info("TicketCache: refunded {}", ticket_id);
-            } else if (event_type == "ticket.bumped") {
+            }
+            else if (event_type == "ticket.bumped") {
                 cache.updateTicketStatus(ticket_id, checkin::TicketStatus::Bumped);
                 spdlog::info("TicketCache: bumped {}", ticket_id);
             }
 
             if (!event_id.empty()) service.markEventProcessed(event_id);
         }
-    } catch (const std::exception& e) {
+    }
+    catch (const std::exception& e) {
         spdlog::error("handleKafkaMessage error: {}", e.what());
     }
 }
@@ -103,16 +110,20 @@ int main() {
 
     spdlog::info("=== Check-in Service starting ===");
 
-    std::signal(SIGINT,  signalHandler);
+    std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
 
     // ── Config ────────────────────────────────────────────────────────────────
     auto cfg = checkin::Config::fromEnv();
     spdlog::info("Config: port={}, db={}, kafka={}", cfg.port, cfg.db_name,
-                 cfg.kafka_brokers);
+        cfg.kafka_brokers);
 
     // ── Database ──────────────────────────────────────────────────────────────
     checkin::Database db(cfg.connectionString());
+
+    // ── Migrations ────────────────────────────────────────────────────────────
+    checkin::Migrator migrator(db);
+    migrator.migrate();
 
     // ── Services ──────────────────────────────────────────────────────────────
     checkin::CacheService  cache;
@@ -127,34 +138,35 @@ int main() {
     checkin::KafkaConsumer consumer(
         cfg.kafka_brokers,
         cfg.kafka_group_id,
-        {cfg.topic_flights, cfg.topic_tickets}
+        { cfg.topic_flights, cfg.topic_tickets }
     );
 
     consumer.setHandler([&](const std::string& topic,
-                             const std::string& key,
-                             const nlohmann::json& msg) {
-        handleKafkaMessage(topic, key, msg, cache, service);
-    });
+        const std::string& key,
+        const nlohmann::json& msg) {
+            handleKafkaMessage(topic, key, msg, cache, service);
+        });
     consumer.start();
 
     // ── HTTP server ───────────────────────────────────────────────────────────
     crow::SimpleApp app;
 
-    checkin::handlers::registerHealthRoute(app);
+    checkin::handlers::registerCorsHandler(app);
+    checkin::handlers::registerHealthRoute(app, db);
+    checkin::handlers::registerVersionRoute(app);
     checkin::handlers::registerCheckinRoutes(app, service);
 
-    // CORS middleware for local dev
-    app.after_handle([](crow::request&, crow::response& res, crow::context&) {
+    // Global after-hook: add CORS headers to every response
+    app.after_handle([](crow::request&, crow::response& res) {
         res.add_header("Access-Control-Allow-Origin", "*");
-        res.add_header("Access-Control-Allow-Headers",
-                       "Content-Type, Authorization");
-    });
+        res.add_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        });
 
     spdlog::info("HTTP server listening on port {}", cfg.port);
     app.port(cfg.port)
-       .multithreaded()
-       .concurrency(4)
-       .run_async();
+        .multithreaded()
+        .concurrency(4)
+        .run_async();
 
     // ── Wait for shutdown ─────────────────────────────────────────────────────
     while (!g_shutdown) {
