@@ -3,11 +3,11 @@
 Микросервис регистрации пассажиров аэропорта. Часть общего Airport Simulation проекта.
 
 Для программы нужны:
-Docker Desktop
-Git
-vcpkg
-PostgreSQL
-crow
+- Docker Desktop
+- Git
+- vcpkg
+- PostgreSQL
+- crow
 
 Для постройки билда нужно ввести: cmake -B build -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DPostgreSQL_ROOT="C:/Program Files/PostgreSQL/18" -DCrow_DIR="C:/vcpkg/installed/x64-windows/share/crow"
 
