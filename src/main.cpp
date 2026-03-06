@@ -156,12 +156,6 @@ int main() {
     checkin::handlers::registerVersionRoute(app);
     checkin::handlers::registerCheckinRoutes(app, service);
 
-    // Global after-hook: add CORS headers to every response
-    app.after_handle([](crow::request&, crow::response& res) {
-        res.add_header("Access-Control-Allow-Origin", "*");
-        res.add_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-        });
-
     spdlog::info("HTTP server listening on port {}", cfg.port);
     app.port(cfg.port)
         .multithreaded()
