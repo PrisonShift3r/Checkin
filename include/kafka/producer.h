@@ -1,5 +1,5 @@
 #pragma once
-#include <librdkafka/rdkafkacpp.h>
+#include <rdkafkacpp.h>
 #include <string>
 #include <memory>
 #include <nlohmann/json.hpp>

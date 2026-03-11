@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     pkg-config \
     ca-certificates \
+    libasio-dev \
     libpq-dev \
     libssl-dev \
     zlib1g-dev \
@@ -44,6 +45,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY --from=builder /build/build/checkin-service .
+COPY --from=builder /build/build/_deps/librdkafka-build/src/librdkafka.so* /usr/local/lib/
+COPY --from=builder /build/build/_deps/librdkafka-build/src-cpp/librdkafka++.so* /usr/local/lib/
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 
 ENV PORT=8000 \
     DB_HOST=postgres \

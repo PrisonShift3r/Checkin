@@ -19,6 +19,26 @@
 // ─── Global shutdown flag ─────────────────────────────────────────────────────
 static std::atomic<bool> g_shutdown{ false };
 
+namespace {
+
+std::string extractEventType(const nlohmann::json& msg) {
+    if (msg.contains("type") && msg["type"].is_string()) return msg["type"].get<std::string>();
+    if (msg.contains("eventType") && msg["eventType"].is_string()) return msg["eventType"].get<std::string>();
+    return "";
+}
+
+nlohmann::json extractPayload(const nlohmann::json& msg) {
+    if (msg.contains("payload") && msg["payload"].is_object()) return msg["payload"];
+    return msg;
+}
+
+std::string extractString(const nlohmann::json& msg, const char* key) {
+    if (msg.contains(key) && msg[key].is_string()) return msg[key].get<std::string>();
+    return "";
+}
+
+} // namespace
+
 void signalHandler(int) {
     spdlog::info("Shutdown signal received");
     g_shutdown = true;
@@ -32,15 +52,15 @@ void handleKafkaMessage(const std::string& topic,
     checkin::CheckinService& service) {
     try {
         if (topic == "flights.events") {
-            // Expected: { eventId, type, flightId, newStatus, simTime }
-            std::string event_type = msg.value("type", "");
+            auto payload = extractPayload(msg);
+            std::string event_type = extractEventType(msg);
             if (event_type != "flight.status.changed") return;
 
-            std::string event_id = msg.value("eventId", "");
-            std::string flight_id = msg.value("flightId", "");
-            std::string new_status = msg.value("newStatus", "");
-            std::string sim_time = msg.value("simTime", "");
-
+            std::string event_id = extractString(msg, "eventId");
+            std::string flight_id = extractString(payload, "flightId");
+            std::string new_status = extractString(payload, "newStatus");
+            std::string sim_time = extractString(payload, "simTime");
+            if (sim_time.empty()) sim_time = extractString(msg, "ts");
             if (flight_id.empty()) return;
 
             // Idempotency
@@ -64,12 +84,12 @@ void handleKafkaMessage(const std::string& topic,
 
         }
         else if (topic == "tickets.events") {
-            // Expected: { eventId, type, ticketId, flightId, passengerId, status }
-            std::string event_type = msg.value("type", "");
-            std::string event_id = msg.value("eventId", "");
-            std::string ticket_id = msg.value("ticketId", "");
-            std::string flight_id = msg.value("flightId", "");
-            std::string passenger_id = msg.value("passengerId", "");
+            auto payload = extractPayload(msg);
+            std::string event_type = extractEventType(msg);
+            std::string event_id = extractString(msg, "eventId");
+            std::string ticket_id = extractString(payload, "ticketId");
+            std::string flight_id = extractString(payload, "flightId");
+            std::string passenger_id = extractString(payload, "passengerId");
 
             if (ticket_id.empty()) return;
 

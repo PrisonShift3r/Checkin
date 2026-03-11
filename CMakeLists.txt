@@ -7,8 +7,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(FetchContent)
 find_package(Threads REQUIRED)
+find_package(PostgreSQL REQUIRED)
 
-# ─── nlohmann/json ────────────────────────────────────────────────────────────
+# Optional switch kept for compatibility with older build scripts.
+option(USE_SYSTEM_DEPS "Prefer system packages where possible" OFF)
+
+# ─── Header-only libs ────────────────────────────────────────────────────────
 FetchContent_Declare(nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG        v3.11.3
@@ -16,7 +20,6 @@ FetchContent_Declare(nlohmann_json
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-# ─── spdlog ───────────────────────────────────────────────────────────────────
 FetchContent_Declare(spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog.git
     GIT_TAG        v1.14.1
@@ -24,15 +27,17 @@ FetchContent_Declare(spdlog
 )
 FetchContent_MakeAvailable(spdlog)
 
-# ─── Crow + Asio через vcpkg ──────────────────────────────────────────────────
-list(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/share/crow")
-list(APPEND CMAKE_PREFIX_PATH "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/share/asio")
+# Crow is used as a header-only framework. We do not rely on its CMake package
+# because the project is built inside Linux containers and the previous setup
+# accidentally pointed CMAKE_PREFIX_PATH to a Windows vcpkg layout.
+FetchContent_Declare(crow
+    GIT_REPOSITORY https://github.com/CrowCpp/Crow.git
+    GIT_TAG        v1.2.0
+    GIT_SHALLOW    TRUE
+)
+FetchContent_MakeAvailable(crow)
 
-find_package(Crow CONFIG REQUIRED)
-find_package(asio CONFIG REQUIRED)
-
-# ─── libpqxx ──────────────────────────────────────────────────────────────────
-find_package(PostgreSQL REQUIRED)
+# ─── libpqxx ────────────────────────────────────────────────────────────────
 set(SKIP_BUILD_TEST ON CACHE BOOL "" FORCE)
 set(BUILD_TEST      OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(libpqxx
@@ -42,7 +47,7 @@ FetchContent_Declare(libpqxx
 )
 FetchContent_MakeAvailable(libpqxx)
 
-# ─── librdkafka ───────────────────────────────────────────────────────────────
+# ─── librdkafka ──────────────────────────────────────────────────────────────
 set(RDKAFKA_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 set(RDKAFKA_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(WITH_SASL              OFF CACHE BOOL "" FORCE)
@@ -55,7 +60,7 @@ FetchContent_Declare(librdkafka
 )
 FetchContent_MakeAvailable(librdkafka)
 
-# ─── Исполняемый файл ─────────────────────────────────────────────────────────
+# ─── Sources ─────────────────────────────────────────────────────────────────
 set(SOURCES
     src/main.cpp
     src/db/database.cpp
@@ -75,12 +80,13 @@ add_executable(checkin-service ${SOURCES})
 
 target_include_directories(checkin-service PRIVATE
     ${CMAKE_SOURCE_DIR}/include
+    ${crow_SOURCE_DIR}/include
+    ${librdkafka_SOURCE_DIR}/src
+    ${librdkafka_SOURCE_DIR}/src-cpp
 )
 
 target_link_libraries(checkin-service PRIVATE
     Threads::Threads
-    Crow::Crow
-    asio::asio
     pqxx
     rdkafka++
     nlohmann_json::nlohmann_json
@@ -89,5 +95,4 @@ target_link_libraries(checkin-service PRIVATE
 
 target_compile_definitions(checkin-service PRIVATE
     ASIO_STANDALONE
-    CROW_USE_BOOST=0
 )

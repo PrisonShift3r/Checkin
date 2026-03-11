@@ -24,6 +24,34 @@ namespace checkin {
             return c;
         }
 
+
+        nlohmann::json buildCheckinCompletedEvent(const Checkin& c, const std::string& sim_time) {
+            const auto effective_sim_time = sim_time.empty() ? utils::nowISO() : sim_time;
+            nlohmann::json payload = {
+                {"checkinId",   c.checkin_id},
+                {"flightId",    c.flight_id},
+                {"passengerId", c.passenger_id},
+                {"ticketId",    c.ticket_id},
+                {"status",      "success"},
+                {"simTime",     effective_sim_time}
+            };
+            return {
+                {"eventId", utils::generateUUID()},
+                {"type", "checkin.completed"},
+                {"eventType", "checkin.completed"},
+                {"ts", effective_sim_time},
+                {"occurredAt", effective_sim_time},
+                {"producer", "checkin"},
+                {"source", "checkin"},
+                {"entity", {
+                    {"kind", "checkin"},
+                    {"id", c.checkin_id}
+                }},
+                {"correlationId", nullptr},
+                {"payload", payload}
+            };
+        }
+
     } // namespace
 
     CheckinService::CheckinService(Database& db,
@@ -200,14 +228,7 @@ namespace checkin {
             Checkin c = rowToCheckin(rows[0]);
 
             // Enqueue Kafka event via outbox (same transaction → atomicity)
-            nlohmann::json event = {
-                {"checkinId",   c.checkin_id},
-                {"flightId",    c.flight_id},
-                {"passengerId", c.passenger_id},
-                {"ticketId",    c.ticket_id},
-                {"status",      "success"},
-                {"simTime",     sim_time.empty() ? utils::nowISO() : sim_time}
-            };
+            auto event = buildCheckinCompletedEvent(c, sim_time);
             OutboxPublisher::enqueue(txn, "checkin.events", c.flight_id, event.dump());
 
             spdlog::info("Checkin created: {} for ticket {}", c.checkin_id, ticket_id);
@@ -217,14 +238,7 @@ namespace checkin {
 
     void CheckinService::publishCheckinCompleted(const Checkin& c,
         const std::string& sim_time) {
-        nlohmann::json event = {
-            {"checkinId",   c.checkin_id},
-            {"flightId",    c.flight_id},
-            {"passengerId", c.passenger_id},
-            {"ticketId",    c.ticket_id},
-            {"status",      "success"},
-            {"simTime",     sim_time.empty() ? utils::nowISO() : sim_time}
-        };
+        auto event = buildCheckinCompletedEvent(c, sim_time);
         producer_.publish("checkin.events", c.flight_id, event);
     }
 
